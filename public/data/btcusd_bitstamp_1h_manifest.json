@@ -1,0 +1,25 @@
+{
+  "granularity": "1h",
+  "timezone": "UTC",
+  "source": "Bitstamp BTC/USD 1min aggregated to 1h from ff137/bitstamp-btcusd-minute-data",
+  "rows": 126880,
+  "first_timestamp": 1325412000,
+  "last_timestamp": 1782176400,
+  "chunks": [
+    {
+      "file": "/data/btcusd_bitstamp_1h_part01.csv",
+      "rows": 54638,
+      "bytes": 3800021
+    },
+    {
+      "file": "/data/btcusd_bitstamp_1h_part02.csv",
+      "rows": 50693,
+      "bytes": 3800015
+    },
+    {
+      "file": "/data/btcusd_bitstamp_1h_part03.csv",
+      "rows": 21549,
+      "bytes": 1495693
+    }
+  ]
+}
