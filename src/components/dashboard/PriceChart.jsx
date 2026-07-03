@@ -82,7 +82,7 @@ export default function PriceChart({ data }) {
           width={60}
           domain={[yMin, yMax]}
         />
-        <Tooltip content={<CustomTooltip />} position={{ x: "right" }} />
+        <Tooltip content={<CustomTooltip />} />
         <Area
           type="linear"
           dataKey="y"

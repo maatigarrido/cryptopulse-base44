@@ -8,12 +8,18 @@ const HALVING_STARTS = [
   // Halving 2024 is the current one — excluded from "previous" averages
 ];
 
-const YEAR_STARTS = [
-  { name: "Año 2012", date: new Date("2012-01-01") },
-  { name: "Año 2016", date: new Date("2016-01-01") },
-  { name: "Año 2020", date: new Date("2020-01-01") },
-  // 2024 is current — excluded
-];
+const currentFourYearCycleStart = () => {
+  const year = new Date().getFullYear();
+  const startYear = year - (year % 4);
+  return new Date(`${startYear}-01-01`);
+};
+
+const previousFourYearCycles = (currentStartDate) => {
+  const currentStartYear = currentStartDate.getFullYear();
+  return [currentStartYear - 12, currentStartYear - 8, currentStartYear - 4]
+    .filter((year) => year >= 2012)
+    .map((year) => ({ name: `Año ${year}`, date: new Date(`${year}-01-01`) }));
+};
 
 // Get multiplier at a given day offset from a cycle start, using dailyData
 function getMultiplierAtDay(dailyData, startTs, dayOffset) {
@@ -75,10 +81,11 @@ export default function CyclePrediction({ view, dailyData, currentPrice }) {
   if (view !== "halving" && view !== "year") return null;
 
   const isHalving = view === "halving";
-  const cycleStarts = isHalving ? HALVING_STARTS : YEAR_STARTS;
+  const currentYearCycleStart = currentFourYearCycleStart();
+  const cycleStarts = isHalving ? HALVING_STARTS : previousFourYearCycles(currentYearCycleStart);
   const currentCycleStart = isHalving
     ? { name: "Halving 2024", date: new Date("2024-04-20") }
-    : { name: "Año 2024", date: new Date("2024-01-01") };
+    : { name: `Año ${currentYearCycleStart.getFullYear()}`, date: currentYearCycleStart };
 
   const pred = computePrediction(dailyData, cycleStarts, currentCycleStart);
   if (!pred) return null;

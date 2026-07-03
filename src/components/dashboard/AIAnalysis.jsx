@@ -1,29 +1,40 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { appParams } from "@/lib/app-params";
 import { TrendingUp, TrendingDown, Minus, Sparkles, Loader2 } from "lucide-react";
 
 export default function AIAnalysis({ data, coin }) {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const runAnalysis = async () => {
     if (!data || data.length < 10) return;
+
+    if (!appParams.appId) {
+      setAnalysis(null);
+      setError("El análisis IA requiere configurar Base44 en el despliegue.");
+      return;
+    }
+
     setLoading(true);
     setAnalysis(null);
+    setError(null);
 
-    // Build a summary of recent price action
-    const recent = data.slice(-30);
-    const prices = recent.map((d) => ({
-      date: new Date(d.x * 1000).toISOString().split("T")[0],
-      price: d.y,
-    }));
-    const first = prices[0];
-    const last = prices[prices.length - 1];
-    const high = Math.max(...recent.map((d) => d.y));
-    const low = Math.min(...recent.map((d) => d.y));
-    const change = ((last.price - first.price) / first.price) * 100;
+    try {
+      // Build a summary of recent price action
+      const recent = data.slice(-30);
+      const prices = recent.map((d) => ({
+        date: new Date(d.x * 1000).toISOString().split("T")[0],
+        price: d.y,
+      }));
+      const first = prices[0];
+      const last = prices[prices.length - 1];
+      const high = Math.max(...recent.map((d) => d.y));
+      const low = Math.min(...recent.map((d) => d.y));
+      const change = ((last.price - first.price) / first.price) * 100;
 
-    const prompt = `Eres un analista experto en criptomonedas. Analiza los siguientes datos de precio de ${coin} en los últimos 30 días y da una predicción breve de si el precio subirá o bajará a corto plazo.
+      const prompt = `Eres un analista experto en criptomonedas. Analiza los siguientes datos de precio de ${coin} en los últimos 30 días y da una predicción breve de si el precio subirá o bajará a corto plazo.
 
 Datos:
 - Precio inicial (30 días atrás): $${first.price.toFixed(2)} (${first.date})
@@ -39,20 +50,25 @@ Responde en español con:
 2. Una explicación breve (2-3 oraciones) del análisis técnico
 3. Nivel de confianza: ALTO, MEDIO o BAJO`;
 
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          signal: { type: "string", enum: ["SUBE", "BAJA", "LATERAL"] },
-          explanation: { type: "string" },
-          confidence: { type: "string", enum: ["ALTO", "MEDIO", "BAJO"] },
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            signal: { type: "string", enum: ["SUBE", "BAJA", "LATERAL"] },
+            explanation: { type: "string" },
+            confidence: { type: "string", enum: ["ALTO", "MEDIO", "BAJO"] },
+          },
         },
-      },
-    });
+      });
 
-    setAnalysis(result);
-    setLoading(false);
+      setAnalysis(result);
+    } catch (err) {
+      console.error("AI analysis failed:", err);
+      setError("No se pudo completar el análisis IA. Revisa la configuración de Base44 o intenta nuevamente.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signalColor = {
@@ -87,6 +103,12 @@ Responde en español con:
       {!analysis && !loading && (
         <p className="text-xs text-muted-foreground">
           Presiona "Analizar" para obtener una predicción basada en IA sobre la dirección del precio.
+        </p>
+      )}
+
+      {error && !loading && (
+        <p className="text-xs text-destructive">
+          {error}
         </p>
       )}
 
