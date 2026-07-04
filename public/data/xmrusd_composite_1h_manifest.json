@@ -1,0 +1,20 @@
+{
+  "granularity": "1h",
+  "timezone": "UTC",
+  "source": "Composite XMR/USD hourly: Poloniex XMR/BTC with Bitstamp BTC/USD, Poloniex XMR/USDT, then Kraken XMR/USD",
+  "rows": 100347,
+  "first_timestamp": 1400475600,
+  "last_timestamp": 1767222000,
+  "chunks": [
+    {
+      "file": "/data/xmrusd_composite_1h_part01.csv",
+      "rows": 71768,
+      "bytes": 3871745
+    },
+    {
+      "file": "/data/xmrusd_composite_1h_part02.csv",
+      "rows": 28579,
+      "bytes": 1482301
+    }
+  ]
+}

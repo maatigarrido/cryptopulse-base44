@@ -1,0 +1,18 @@
+{
+  "source": "Composite XMR/USD hourly: Poloniex XMR/BTC with Bitstamp BTC/USD, Poloniex XMR/USDT, then Kraken XMR/USD",
+  "granularity": "1h OHLCV",
+  "timezone": "UTC",
+  "rows": 100347,
+  "first_hour_utc": "2014-05-19T05:00:00+00:00",
+  "last_hour_utc": "2025-12-31T23:00:00+00:00",
+  "generated_at_utc": "2026-07-04T14:42:31.586465+00:00",
+  "historical_url": "https://www.cryptodatadownload.com/data/poloniex/",
+  "generated_from": [
+    "https://www.cryptodatadownload.com/cdd/Poloniex_XMRBTC_1h.csv",
+    "https://www.cryptodatadownload.com/cdd/Poloniex_XMRUSDT_1h.csv",
+    "public/data/btcusd_bitstamp_1h_manifest.json",
+    "master_q4/XMRUSD_60.csv"
+  ],
+  "kraken_reference_url": "https://support.kraken.com/articles/360047124832-downloadable-historical-ohlcvt-open-high-low-close-volume-trades-data",
+  "kraken_xmrusd_first_hour_utc": "2017-01-02T19:00:00+00:00"
+}

@@ -1,0 +1,13 @@
+{
+  "source": "Kraken OHLCVT ETH/USD 60-minute CSV",
+  "granularity": "1h OHLCV",
+  "timezone": "UTC",
+  "rows": 87690,
+  "first_hour_utc": "2015-08-07T14:00:00+00:00",
+  "last_hour_utc": "2025-12-31T23:00:00+00:00",
+  "generated_at_utc": "2026-07-04T14:42:06.277390+00:00",
+  "historical_url": "https://support.kraken.com/articles/360047124832-downloadable-historical-ohlcvt-open-high-low-close-volume-trades-data",
+  "generated_from": [
+    "master_q4/ETHUSD_60.csv"
+  ]
+}

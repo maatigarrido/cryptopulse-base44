@@ -33,6 +33,24 @@ const COINS = {
   XMR: { label: "XMR", name: "Monero"  },
 };
 
+const KRAKEN_PAIRS = { BTC: "XBTUSD", ETH: "ETHUSD", XMR: "XMRUSD" };
+const YAHOO_SYMBOLS = { BTC: "BTC-USD", ETH: "ETH-USD", XMR: "XMR-USD" };
+
+const LOCAL_PRICE_HISTORY = {
+  BTC: {
+    manifest: "/data/btcusd_bitstamp_1h_manifest.json",
+    sourceLabel: "CSV horario local Bitstamp",
+  },
+  ETH: {
+    manifest: "/data/ethusd_kraken_1h_manifest.json",
+    sourceLabel: "CSV horario local Kraken",
+  },
+  XMR: {
+    manifest: "/data/xmrusd_composite_1h_manifest.json",
+    sourceLabel: "CSV horario local Poloniex/Kraken",
+  },
+};
+
 export default function Home() {
   const [coin, setCoin] = useState("BTC");
   const [view, setView] = useState("price");
@@ -80,10 +98,6 @@ export default function Home() {
     setLoading(true);
     setError(null);
 
-    // Kraken pairs (full history: BTC from 2013, ETH from 2015, XMR from 2014)
-    const KRAKEN_PAIRS = { BTC: "XBTUSD", ETH: "ETHUSD", XMR: "XMRUSD" };
-    const YAHOO_SYMBOLS = { BTC: "BTC-USD", ETH: "ETH-USD", XMR: "XMR-USD" };
-
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     const fetchKrakenOHLC = async (pair, interval, sinceTs) => {
@@ -121,8 +135,11 @@ export default function Home() {
         .filter((d) => Number.isFinite(d.y) && d.y > 0);
     };
 
-    const fetchLocalBtcHistory = async () => {
-      const manifestRes = await fetch("/data/btcusd_bitstamp_1h_manifest.json");
+    const fetchLocalPriceHistory = async (selectedCoin) => {
+      const history = LOCAL_PRICE_HISTORY[selectedCoin];
+      if (!history) return [];
+
+      const manifestRes = await fetch(history.manifest);
       if (!manifestRes.ok) throw new Error(`CSV manifest HTTP ${manifestRes.status}`);
       const manifest = await manifestRes.json();
       const chunks = await Promise.all(
@@ -159,55 +176,13 @@ export default function Home() {
 
     try {
       const pair = KRAKEN_PAIRS[coin];
-      const localBtcHistory = coin === "BTC" ? await fetchLocalBtcHistory() : [];
-      const lastLocalTs = localBtcHistory.reduce((max, point) => Math.max(max, point.x), 0);
-      const shouldRefreshFromApi = coin !== "BTC" || !lastLocalTs || (Date.now() / 1000 - lastLocalTs) > 6 * 3600;
-      const yahooStartTs = coin === "BTC" && lastLocalTs ? lastLocalTs + 3600 : 1356998400;
+      const localHistory = await fetchLocalPriceHistory(coin);
+      const lastLocalTs = localHistory.reduce((max, point) => Math.max(max, point.x), 0);
+      const shouldRefreshFromApi = !lastLocalTs || (Date.now() / 1000 - lastLocalTs) > 6 * 3600;
+      const yahooStartTs = lastLocalTs ? lastLocalTs + 3600 : 1356998400;
       const yahooDaily = shouldRefreshFromApi ? await fetchYahooDaily(YAHOO_SYMBOLS[coin], yahooStartTs) : [];
-      let daily = coin === "BTC" ? mergePriceData(localBtcHistory, yahooDaily) : yahooDaily;
+      let daily = mergePriceData(localHistory, yahooDaily);
       if (daily.length === 0) throw new Error("Sin datos de precios");
-
-      if (false) {
-      const nowSec = Math.floor(Date.now() / 1000);
-
-      // Step 1: quick weekly fetch to discover actual date range
-      const weeklyRows = await fetchKrakenOHLC(pair, 10080, 0);
-      if (!weeklyRows.length) throw new Error("Sin datos de precios");
-      const tsList = weeklyRows.map(r => parseInt(r[0]));
-      const minTs = Math.min(...tsList);
-      const maxTs = Math.max(...tsList);
-
-      // Step 2: compute 4h page boundaries (720 candles × 4h = 120 days per page)
-      const FOUR_H = 240;
-      const CANDLES_PER_PAGE = 720;
-      const PAGE_SPAN_SEC = CANDLES_PER_PAGE * FOUR_H * 60;
-      const totalPages = Math.ceil((maxTs - minTs) / PAGE_SPAN_SEC) + 1;
-
-      // Fetch 4h pages sequentially to avoid Kraken rate limits.
-      const allResults = [];
-      for (let p = 0; p < totalPages; p++) {
-        const sinceSec = minTs + p * PAGE_SPAN_SEC;
-        allResults.push(await fetchKrakenOHLC(pair, FOUR_H, sinceSec));
-        await delay(650);
-      }
-
-      // Merge, deduplicate, sort
-      const seen = new Set();
-      const allDaily = [];
-      allResults.forEach((rows) => {
-        rows.forEach((r) => {
-          const ts = parseInt(r[0]);
-          if (!seen.has(ts)) {
-            seen.add(ts);
-            const price = parseFloat(r[4]);
-            if (price > 0) allDaily.push({ x: ts, y: price });
-          }
-        });
-      });
-      allDaily.sort((a, b) => a.x - b.x);
-      if (allDaily.length === 0) throw new Error("Sin datos de precios");
-      const daily = allDaily;
-      }
 
       // Hourly & minute (single page each, recent only)
       let hourly = [], minute = [];
@@ -220,14 +195,12 @@ export default function Home() {
         minute = rows.map(r => ({ x: parseInt(r[0]), y: parseFloat(r[4]) })).filter(d => d.y > 0);
       } catch (_) {}
 
-      if (coin === "BTC") {
-        const nowTs = Math.floor(Date.now() / 1000);
-        if (hourly.length === 0) {
-          hourly = daily.filter((d) => d.x >= nowTs - 90 * 86400);
-        }
-        if (minute.length === 0) {
-          minute = daily.filter((d) => d.x >= nowTs - 86400);
-        }
+      const nowTs = Math.floor(Date.now() / 1000);
+      if (hourly.length === 0) {
+        hourly = daily.filter((d) => d.x >= nowTs - 90 * 86400);
+      }
+      if (minute.length === 0) {
+        minute = hourly.filter((d) => d.x >= nowTs - 86400);
       }
 
       if (fetchId !== fetchCancelRef.current) return;
@@ -257,7 +230,12 @@ export default function Home() {
     }
     const days = timespanDays[range];
     // 1D → use minute data (last 1440 minutes = 24h)
-    if (days === 1) return minuteData.length > 0 ? minuteData : [];
+    if (days === 1) {
+      const cutoffTs = Math.floor((Date.now() - 86400 * 1000) / 1000);
+      if (minuteData.length > 0) return minuteData.filter((d) => d.x >= cutoffTs);
+      if (hourlyData.length > 0) return hourlyData.filter((d) => d.x >= cutoffTs);
+      return dailyData.filter((d) => d.x >= cutoffTs);
+    }
     if (days !== "max" && days <= 90 && hourlyData.length > 0) {
       const cutoffTs = Math.floor((Date.now() - days * 86400 * 1000) / 1000);
       return hourlyData.filter((d) => d.x >= cutoffTs);
@@ -287,6 +265,8 @@ export default function Home() {
     ? `${COINS[coin].name} – Ciclos por Año (desde 1 de Enero)`
     : `${COINS[coin].name} – Ciclos por Halving de BTC (normalizado)`;
 
+  const activeLocalSource = LOCAL_PRICE_HISTORY[coin]?.sourceLabel || "CSV local";
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -313,7 +293,7 @@ export default function Home() {
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
-              a.download = `bitcoin_precios_historicos.csv`;
+              a.download = `${coin.toLowerCase()}_precios_historicos.csv`;
               a.click();
               URL.revokeObjectURL(url);
             }}
@@ -453,7 +433,7 @@ export default function Home() {
 
         {/* Footer note */}
         <p className="text-center text-xs text-muted-foreground pb-4">
-          Datos base desde <span className="text-primary">CSV horario local Bitstamp</span> · Nuevos datos desde <span className="text-primary">Yahoo Finance</span> / <span className="text-primary">Kraken</span>
+          Datos base desde <span className="text-primary">{activeLocalSource}</span> · Nuevos datos desde <span className="text-primary">Yahoo Finance</span> / <span className="text-primary">Kraken</span>
           {(coin === "XMR" || coin === "ETH") && view === "halving" && (
             <span className="ml-1">· {COINS[coin].name} analizado con ciclos de halvings de BTC</span>
           )}

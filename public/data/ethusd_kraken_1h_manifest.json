@@ -1,0 +1,20 @@
+{
+  "granularity": "1h",
+  "timezone": "UTC",
+  "source": "Kraken OHLCVT ETH/USD 60-minute CSV",
+  "rows": 87690,
+  "first_timestamp": 1438956000,
+  "last_timestamp": 1767222000,
+  "chunks": [
+    {
+      "file": "/data/ethusd_kraken_1h_part01.csv",
+      "rows": 71399,
+      "bytes": 3871345
+    },
+    {
+      "file": "/data/ethusd_kraken_1h_part02.csv",
+      "rows": 16291,
+      "bytes": 911600
+    }
+  ]
+}
